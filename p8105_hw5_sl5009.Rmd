@@ -31,8 +31,8 @@ theme_set(theme_minimal() + theme(legend.position = "bottom"))
 ```
 
 
-Problem 1
-```{r}
+## Problem 1
+```{r,message=FALSE}
 homicide_df=
   read_csv("./data/homicide-data.csv",na=c("","Unknown")) %>% 
   mutate(
@@ -65,7 +65,7 @@ baltimore_test=
     n=baltimore_summary %>% pull(n)) 
 
 baltimore_test %>% 
-  broom::tidy()
+  broom::tidy() 
 ```
 Let's try to iterate across cities!
 
@@ -141,5 +141,77 @@ homicide_df %>%
   select(city_state,estimate,starts_with("conf"))
 ```
 
+## Problem 2
 
+Start with a dataframe containing all file names.
+```{r,message=FALSE}
+file_df=
+  tibble(file=list.files(path="./data/zip_data")) 
+longitu_df=
+  file_df %>% 
+ mutate(
+    data=purrr::map(file,~read_csv(file.path("./data/zip_data",.)))
+  )
+longitu_df
+```
+
+Tidy the result
+```{r}
+long_df=
+  longitu_df %>% 
+  mutate(
+    control_arm=substr(file,1,3),
+    subject_id=substr(file,5,6)
+  ) %>% 
+  relocate(control_arm,subject_id) %>% 
+  select(-file) %>% 
+  unnest(data) %>% 
+  pivot_longer(
+    week_1:week_8,
+    names_to = "week",
+    names_prefix = "week_",
+    values_to = "value"
+  ) %>% 
+  mutate(
+    week=as.numeric(week)
+  )
+long_df
+```
+
+Make a spaghetti plot showing observations on each subject over time.
+```{r}
+long_df %>% 
+  ggplot(aes(x=week,y=value,color=subject_id))+
+  geom_point()+
+  geom_line()+
+  facet_grid(.~control_arm)
+```
+As the plots above, the values of experimental arm group are generally higher than control arm group. The values of the control arm group change around the beginning point over time while the values in experimental group increased over time.
+
+## Problem 3
+Download the dataset
+```{r}
+library(tidyverse)
+set.seed(10)
+iris_with_missing = iris %>% 
+  map_df(~replace(.x, sample(1:150, 20), NA)) %>%
+  mutate(Species = as.character(Species))
+```
+
+Write a function
+```{r}
+replace_function = function(vector){
+    if(is.numeric(vector)){
+      replace_value = mean(vector, na.rm=TRUE)
+    }
+  else if(is.character(vector)){
+      replace_value = "virginica"
+    }
+  replace_na(vector,replace_value)
+}
+iris_df =
+  iris_with_missing %>% 
+  map_df(replace_function)
+iris_df
+```
 
